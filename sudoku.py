@@ -3,7 +3,6 @@
 
 import csv
 
-
 class Sudoku:
     """A class representing a Sudoku puzzle.
     """
