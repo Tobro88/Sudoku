@@ -30,7 +30,7 @@ class Sudoku:
 
         if file_name is not None:
             self.read_sudoku_from_file(file_name)
-            self.__update_options()
+            self.update_options()
 
     def __str__(self):
         return_string = ''
@@ -74,7 +74,7 @@ class Sudoku:
         options_total = 0
         for i in range(9):
             for j in range(9):
-                options_total += len(self.options[i][j])               
+                options_total += len(self.options[i][j])
         return options_total
 
     def empty_cells_left(self):
@@ -159,12 +159,12 @@ class Sudoku:
         solved = self.is_sudoku_valid() and self.is_full()
         return solved
 
-    def __update_options(self):
-        """Rewrites the options array
+    def update_options(self):
+        """Rewrites the options array,
         """
         if not self.is_sudoku_valid():
             raise Exception("Can not update options if puzzle is not valid.")
-        
+
         # reset the options array
         self.options = [[set([1,2,3,4,5,6,7,8,9]) for x in range(9)] for y in range(9)]
 
@@ -205,44 +205,21 @@ class Sudoku:
                                 if value in self.options[row][col]:
                                     self.options[row][col].remove(value)
 
-    def __place_value(self, cell, value):
-        """Internal method to place value. Does not return new object.
-
-        Args:
-            cell (2-tuple): cell in which value is to be placed.
-            value (int): value to be placed in the cell.
-
-        Raises:
-            Exception: in case the entry into the puzzle is illegal.
-
-        Returns:
-            [type]: [description]
-        """
+    def place_value(self, cell, value, inplace=True):
         if value == 0:
             return
-
-        self.sudoku[cell[0]][cell[1]] = value
-        self.options[cell[0]][cell[1]] = set()
-
-        if not self.is_sudoku_valid():
+        if inplace:
+            return_sudoku = self
+        else:
+            return_sudoku = Sudoku(initial=self)
+        return_sudoku.sudoku[cell[0]][cell[1]] = value
+        return_sudoku.options[cell[0]][cell[1]] = set()
+        if not return_sudoku.is_sudoku_valid():
             print(cell, type(value))
             raise Exception ("Illegal entry into Sudoku puzzle.")
+        return_sudoku.update_options()
 
-        self.__update_options()
-
-    def place_value(self, cell, value):
-        """Place value in a cell of the puzzle. Returns a new Sudoku instance.
-
-        Args:
-            cell (2-tuple): cell in which the value will be placed
-            value (int): value to be placed in the specified cell
-
-        Returns:
-            A new Sudoku object with the entry placed.
-        """
-        new_sudoku = Sudoku(initial=self)
-        new_sudoku.__place_value(cell, value)
-        return new_sudoku
+        return return_sudoku
 
     def number_of_naked_singles(self):
         """Returns the number of trivial options in the Sudoku puzzle. A trivial option
@@ -257,8 +234,8 @@ class Sudoku:
                 if len(self.options[i][j]) == 1:
                     number_of_naked_singles += 1
         return number_of_naked_singles
-    
-    def __find_hidden_single(self):
+
+    def find_hidden_single(self):
 
         for checked_value in range(1,10):
             # Check rows for a value that occurs only once in options
@@ -298,23 +275,21 @@ class Sudoku:
                     if counter == 1:
                         return hidden_single_row, hidden_single_col, checked_value
         return -1, -1, -1
-        
+
     def resolve_naked_and_hidden_singles(self):
 
-        curr_sudoku = self
-        
         finished = False
 
         while not finished:
-            i_hidden, j_hidden, hidden_value = curr_sudoku.__find_hidden_single()
+            i_hidden, j_hidden, hidden_value = self.find_hidden_single()
             if i_hidden < 0:
-                curr_sudoku = curr_sudoku.resolve_naked_singles()
+                self.resolve_naked_singles()
                 finished = True
             else:
-                curr_sudoku.__place_value((i_hidden, j_hidden), hidden_value)
-                curr_sudoku = curr_sudoku.resolve_naked_singles()
-        
-        return curr_sudoku
+                self.place_value((i_hidden, j_hidden), hidden_value, inplace=True)
+                self.resolve_naked_singles()
+
+        return
 
 
     def resolve_naked_singles(self):
@@ -324,25 +299,25 @@ class Sudoku:
         Returns:
             Sudoku: a new Sudoku object in which all naked singles are resolved.
         """
-        curr_sudoku = self
+        #curr_sudoku = Sudoku(initial=self)
 
         # since resolving a trivial option can create new trivial options it is necessary
         # to loop until there are no more trivial options available.
 
-        while curr_sudoku.number_of_naked_singles() > 0:
+        while self.number_of_naked_singles() > 0:
             for i in range(9):
                 for j in range(9):
-                    if len(curr_sudoku.options[i][j]) == 1:
-                        value = list(curr_sudoku.options[i][j])[0]
-                        curr_sudoku = curr_sudoku.place_value( (i,j), value)
+                    if len(self.options[i][j]) == 1:
+                        value = list(self.options[i][j])[0]
+                        self.place_value( (i,j), value, inplace=True)
 
                         # if resolving a trivial option creates an invalid puzzle then there
                         # must be a programming error that did not properly create the options
                         # for each cell
-                        assert curr_sudoku.is_sudoku_valid(), "Impossible to resolve trivial \
+                        assert self.is_sudoku_valid(), "Impossible to resolve trivial \
                             options. Resolving a trivial option resulted in an invalid Sudoku."
 
-        return curr_sudoku
+        return
 
     def print_number_of_options(self):
         """Prints the available options for each cell.
@@ -370,7 +345,7 @@ class Sudoku:
                     raise Exception("Too long line in the input file - wrong file syntax.")
                 column_counter = 0
                 for next_value in row:
-                    self.__place_value( (row_counter, column_counter), int(next_value))
+                    self.place_value((row_counter, column_counter), int(next_value), inplace=True)
                     column_counter += 1
                 row_counter += 1
                 if row_counter > 9:
@@ -391,8 +366,14 @@ class Sudoku:
                         j_min = j
         selected_value = list(self.options[i_min][j_min])[0]
         return i_min, j_min, selected_value
-    
+
     def solve(self):
+        """Method to solve the Sudoku puzzle. The algorithm used is a recursive depth-first
+        search algorithm with pro-active resolution of naked and hidden singles.
+
+        Returns:
+            Boolean: True if the puzzle is solved.
+        """
 
         if self.is_sudoku_solved():
             print(self)
@@ -400,7 +381,7 @@ class Sudoku:
         else:
             if self.are_options_left():
                 i_min, j_min, selected_value = self.select_next_move()
-                new_puzzle = self.place_value( (i_min, j_min), selected_value)
+                new_puzzle = self.place_value( (i_min, j_min), selected_value, inplace=False)
                 new_puzzle.resolve_naked_and_hidden_singles()
                 if new_puzzle.empty_cells_left() > 10:
                     print(f"{new_puzzle.empty_cells_left()} {new_puzzle.options_left()}")
@@ -414,7 +395,6 @@ class Sudoku:
                     else:
                         return False
                 else:
-                    return True                
+                    return True
             else:
                 return False
-
