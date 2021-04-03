@@ -206,8 +206,27 @@ class Sudoku:
                                     self.options[row][col].remove(value)
 
     def place_value(self, cell, value, inplace=True):
+        """Method that places a value in a cell of the puzzle. After the value has been placed all
+        options in the puzzle are updated as well. Method can be used to update the puzzle in-place
+        or return a new puzzle. This different behaviour is necessary in the solve algorithm.
+
+        Placing a zero value has no effect and is ignored.
+
+        Args:
+            cell (2-tuple of int): a tuple with row and column numer of the cell to change
+            value (int): the value to be placed in the cell
+            inplace (bool, optional): used to indicate if the puzzle needs be updated in-place or
+            if a new puzzle with the update is returne. Defaults to True.
+
+        Raises:
+            Exception: in case an illegal value is placed an exception is thrown.
+
+        Returns:
+            Sudoku: if inplace is False a new Sudoku object is returned. Otherwise a reference to
+            the original Sudoko object is returned.
+        """
         if value == 0:
-            return
+            return self
         if inplace:
             return_sudoku = self
         else:
@@ -236,6 +255,12 @@ class Sudoku:
         return number_of_naked_singles
 
     def find_hidden_single(self):
+        """Searches the puzzle for a hidden single, and returns the relevant information for the
+        first find. Returns -1, -1, -1 in case no hidden single is found.
+
+        Returns:
+            int, int, int: row number, column number and value of the hidden single
+        """
 
         for checked_value in range(1,10):
             # Check rows for a value that occurs only once in options
@@ -277,6 +302,9 @@ class Sudoku:
         return -1, -1, -1
 
     def resolve_naked_and_hidden_singles(self):
+        """Resolves all naked and hidden singles iteratively until no more naked and hidden
+        singles are present in the puzzle.
+        """
 
         finished = False
 
@@ -288,9 +316,6 @@ class Sudoku:
             else:
                 self.place_value((i_hidden, j_hidden), hidden_value, inplace=True)
                 self.resolve_naked_singles()
-
-        return
-
 
     def resolve_naked_singles(self):
         """Resolves all naked singles in the Sudoku puzzle. A naked single is
@@ -352,6 +377,13 @@ class Sudoku:
                     raise Exception("Too many rows in the input file - wrong file syntax.")
 
     def select_next_move(self):
+        """While solving the puzzle by exploring all options, a decision is needed about which
+        option to explore next. This method returns the first option value of the cell with the
+        lowest number of options.
+
+        Returns:
+            int, int, int: row number, column number and value selected for the next move
+        """
 
         i_min = 0
         j_min = 0
