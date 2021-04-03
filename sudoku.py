@@ -65,6 +65,32 @@ class Sudoku:
                     return True
         return False
 
+    def options_left(self):
+        """Returns the sum of all options still left in the puzzle.
+
+        Returns:
+            int: number of options left in the puzzle
+        """
+        options_total = 0
+        for i in range(9):
+            for j in range(9):
+                options_total += len(self.options[i][j])               
+        return options_total
+
+    def empty_cells_left(self):
+        """Returns the number of empty cells in the puzzle.
+
+        Returns:
+            int: number of empty cells left in the puzzle
+        """
+        empty_cells_total = 0
+        for i in range(9):
+            for j in range(9):
+                if self.sudoku[i][j] == 0:
+                    empty_cells_total += 1
+        return empty_cells_total
+
+
     def is_cell_valid(self, cell):
         """checks if the value in the cell is valid, i.e. the same value is not
         present in the same row, column or quadrant of the cell.  A zero entry is always valid.
@@ -167,12 +193,12 @@ class Sudoku:
                         if value in self.options[i][cell_col]:
                             self.options[i][cell_col].remove(value)
 
-                #remove options from quadrant
-                quadrant = (cell_row//3, cell_col//3) # // is the floor division operator
+                #remove options from box
+                box = (cell_row//3, cell_col//3) # // is the floor division operator
                 for i in range(3):
                     for j in range(3):
-                        row = quadrant[0]*3 + i
-                        col = quadrant[1]*3 + j
+                        row = box[0]*3 + i
+                        col = box[1]*3 + j
                         test = (row != cell_row) & (col != cell_col)
                         if test: # values in rows and columns have already been removed from options
                             if self.sudoku[row][col] == 0:
@@ -218,33 +244,92 @@ class Sudoku:
         new_sudoku.__place_value(cell, value)
         return new_sudoku
 
-    def number_of_trivial_options(self):
+    def number_of_naked_singles(self):
         """Returns the number of trivial options in the Sudoku puzzle. A trivial option
         is where a cell has only a single option available.
 
         Returns:
             int: number of trivial options in the Sudoku
         """
-        number_of_trivials = 0
+        number_of_naked_singles = 0
         for i in range(9):
             for j in range(9):
                 if len(self.options[i][j]) == 1:
-                    number_of_trivials += 1
-        return number_of_trivials
+                    number_of_naked_singles += 1
+        return number_of_naked_singles
+    
+    def __find_hidden_single(self):
 
-    def resolve_trivial_options(self):
-        """Resolves all trivial options in the Sudoku puzzle. A trivial option is
+        for checked_value in range(1,10):
+            # Check rows for a value that occurs only once in options
+            for cell_row in range(9):
+                counter = 0
+                hidden_single_column = 0
+                for cell_col in range(9):
+                    if checked_value in self.options[cell_row][cell_col]:
+                        counter += 1
+                        hidden_single_column = cell_col
+                if counter == 1:
+                    return cell_row, hidden_single_column, checked_value
+            # Check columns for a value that occurs once in options
+            for cell_col in range(9):
+                counter = 0
+                hidden_single_row = 0
+                for cell_row in range(9):
+                    if checked_value in self. options[cell_row][cell_col]:
+                        counter += 1
+                        hidden_single_row = cell_row
+                if counter == 1:
+                    return hidden_single_row, cell_col, checked_value
+            # Check boxes for a value that occurs once in options
+            for box_row in range(3):
+                for box_col in range(3):
+                    counter = 0
+                    hidden_single_row = 0
+                    hidden_single_col = 0
+                    for cell_rel_row in range(3):
+                        for cell_rel_col in range(3):
+                            cell_abs_row = box_row * 3 + cell_rel_row
+                            cell_abs_col = box_col * 3 + cell_rel_col
+                            if checked_value in self.options[cell_abs_row][cell_abs_col]:
+                                counter += 1
+                                hidden_single_row = cell_abs_row
+                                hidden_single_col = cell_abs_col
+                    if counter == 1:
+                        return hidden_single_row, hidden_single_col, checked_value
+        return -1, -1, -1
+        
+    def resolve_naked_and_hidden_singles(self):
+
+        curr_sudoku = self
+        
+        finished = False
+
+        while not finished:
+            i_hidden, j_hidden, hidden_value = curr_sudoku.__find_hidden_single()
+            if i_hidden < 0:
+                curr_sudoku = curr_sudoku.resolve_naked_singles()
+                finished = True
+            else:
+                curr_sudoku.__place_value((i_hidden, j_hidden), hidden_value)
+                curr_sudoku = curr_sudoku.resolve_naked_singles()
+        
+        return curr_sudoku
+
+
+    def resolve_naked_singles(self):
+        """Resolves all naked singles in the Sudoku puzzle. A naked single is
         where a cell has only a single option available.
 
         Returns:
-            Sudoku: a new Sudoku object in which all trivial options are resolved.
+            Sudoku: a new Sudoku object in which all naked singles are resolved.
         """
         curr_sudoku = self
 
         # since resolving a trivial option can create new trivial options it is necessary
         # to loop until there are no more trivial options available.
 
-        while curr_sudoku.number_of_trivial_options() > 0:
+        while curr_sudoku.number_of_naked_singles() > 0:
             for i in range(9):
                 for j in range(9):
                     if len(curr_sudoku.options[i][j]) == 1:
@@ -310,14 +395,20 @@ class Sudoku:
     def solve(self):
 
         if self.is_sudoku_solved():
+            print(self)
             return True
         else:
             if self.are_options_left():
                 i_min, j_min, selected_value = self.select_next_move()
                 new_puzzle = self.place_value( (i_min, j_min), selected_value)
+                new_puzzle.resolve_naked_and_hidden_singles()
+                if new_puzzle.empty_cells_left() > 10:
+                    print(f"{new_puzzle.empty_cells_left()} {new_puzzle.options_left()}")
                 if not new_puzzle.solve():
                     self.options[i_min][j_min].remove(selected_value)
-                    self.resolve_trivial_options()
+                    self.resolve_naked_and_hidden_singles()
+                    if self.empty_cells_left() > 10:
+                        print(f"{self.empty_cells_left()} {self.options_left()}")
                     if self.solve():
                         return True
                     else:

@@ -1,6 +1,5 @@
 import sudoku
-
-s = sudoku.Sudoku(file_name='sudoku_easy1.csv')
-s = s.resolve_trivial_options()
+s = sudoku.Sudoku(file_name='sudoku_medium1.csv')
+s = s.resolve_naked_singles()
 print(s)
 print(s.solve())
