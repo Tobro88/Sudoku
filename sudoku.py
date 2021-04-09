@@ -352,7 +352,7 @@ class Sudoku:
                 print(len(self.options[i][j]),end='')
             print("\n")
 
-    def read_sudoku_from_file(self, file):
+    def read_sudoku_from_file(self, filename):
         """Reads a Sudoku puzzle from a .csv file.
 
         Args:
@@ -361,7 +361,7 @@ class Sudoku:
         Raises:
             Exception: in case of errors in the input file.
         """
-        with open(file, 'r') as file:
+        with open(filename, 'r') as file:
             reader = csv.reader(file, delimiter = ' ')
             row_counter = 0
             for row in reader:
@@ -415,13 +415,13 @@ class Sudoku:
                 i_min, j_min, selected_value = self.select_next_move()
                 new_puzzle = self.place_value( (i_min, j_min), selected_value, inplace=False)
                 new_puzzle.resolve_naked_and_hidden_singles()
-                if new_puzzle.empty_cells_left() > 10:
-                    print(f"{new_puzzle.empty_cells_left()} {new_puzzle.options_left()}")
+                # if new_puzzle.empty_cells_left() > 10:
+                #     print(f"{new_puzzle.empty_cells_left()} {new_puzzle.options_left()}")
                 if not new_puzzle.solve():
                     self.options[i_min][j_min].remove(selected_value)
                     self.resolve_naked_and_hidden_singles()
-                    if self.empty_cells_left() > 10:
-                        print(f"{self.empty_cells_left()} {self.options_left()}")
+                    # if self.empty_cells_left() > 10:
+                    #     print(f"{self.empty_cells_left()} {self.options_left()}")
                     if self.solve():
                         return True
                     else:
@@ -430,3 +430,70 @@ class Sudoku:
                     return True
             else:
                 return False
+
+    def alternative_solve(self):
+        """This method is the one found in:
+            https://github.com/techwithtim/Sudoku-GUI-Solver
+            The method does not eliminate naked or hidden singles and therefore needs to run more
+            iterations. The reduced overhead makes this method run faster on simpler puzzles but
+            runs much longer (~60 times longer) on puzzles with the minimum number of hints (17)
+        """
+
+        def inner_solve(bo):
+            find = inner_find_empty(bo)
+            if not find:
+                inner_print_board(bo)
+                return True
+            else:
+                row, col = find
+                # print(f"Tring {row}, {col}")
+            for i in range(1,10):
+                if inner_valid(bo, i, (row, col)):
+                    bo[row][col] = i
+                    if inner_solve(bo):
+                        
+                        return True
+                    bo[row][col] = 0
+            return False
+
+        def inner_valid(bo, num, pos):
+
+            for i in range(len(bo[0])):
+                if bo[pos[0]][i] == num and pos[1] != i:
+                    return False
+            for i in range(len(bo)):
+                if bo[i][pos[1]] == num and pos[0] != i:
+                    return False
+            box_x = pos[1] // 3
+            box_y = pos[0] // 3
+            for i in range(box_y*3, box_y*3 + 3):
+                for j in range(box_x * 3, box_x*3 + 3):
+                    if bo[i][j] == num and (i,j) != pos:
+                        return False
+            return True
+
+        def inner_print_board(bo):
+
+            for i in range(len(bo)):
+                if i % 3 == 0 and i != 0:
+                    print("- - - - - - - - - - - - - ")
+                for j in range(len(bo[0])):
+                    if j % 3 == 0 and j != 0:
+                        print(" | ", end="")
+                    if j == 8:
+                        print(bo[i][j])
+                    else:
+                        print(str(bo[i][j]) + " ", end="")
+
+        def inner_find_empty(bo):
+
+            for i in range(len(bo)):
+                for j in range(len(bo[0])):
+                    if bo[i][j] == 0:
+                        return (i, j)  # row, col
+            return None
+
+        if not inner_solve(self.sudoku):
+            print("Unsolvable")
+        else:
+            print("Solved")
