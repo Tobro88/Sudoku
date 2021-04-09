@@ -433,63 +433,66 @@ class Sudoku:
 
     def alternative_solve(self):
         """This method is the one found in:
-            https://github.com/techwithtim/Sudoku-GUI-Solver
-            The method does not eliminate naked or hidden singles and therefore needs to run more
-            iterations. The reduced overhead makes this method run faster on simpler puzzles but
-            runs much longer (~60 times longer) on puzzles with the minimum number of hints (17)
+        https://github.com/techwithtim/Sudoku-GUI-Solver
+        The method does not eliminate naked or hidden singles and therefore needs to run more
+        iterations. The reduced overhead makes this method run faster on simpler puzzles but
+        runs much longer (~60 times longer) on puzzles with the minimum number of hints (17)
+
+        The parameter 'sudoku' used in the functions refers to a two-dimensional array of
+        integers representing the sudoku puzzle.
         """
 
-        def inner_solve(bo):
-            find = inner_find_empty(bo)
+        def inner_solve(sudoku):
+            find = inner_find_empty(sudoku)
             if not find:
-                inner_print_board(bo)
+                inner_print_board(sudoku)
                 return True
             else:
                 row, col = find
                 # print(f"Tring {row}, {col}")
             for i in range(1,10):
-                if inner_valid(bo, i, (row, col)):
-                    bo[row][col] = i
-                    if inner_solve(bo):
-                        
+                if inner_valid(sudoku, i, (row, col)):
+                    sudoku[row][col] = i
+                    if inner_solve(sudoku):
+
                         return True
-                    bo[row][col] = 0
+                    sudoku[row][col] = 0
             return False
 
-        def inner_valid(bo, num, pos):
+        def inner_valid(sudoku, num, pos):
 
-            for i in range(len(bo[0])):
-                if bo[pos[0]][i] == num and pos[1] != i:
+            for i in range(9):
+                if sudoku[pos[0]][i] == num and pos[1] != i:
                     return False
-            for i in range(len(bo)):
-                if bo[i][pos[1]] == num and pos[0] != i:
+            for i in range(9):
+                if sudoku[i][pos[1]] == num and pos[0] != i:
                     return False
             box_x = pos[1] // 3
             box_y = pos[0] // 3
             for i in range(box_y*3, box_y*3 + 3):
                 for j in range(box_x * 3, box_x*3 + 3):
-                    if bo[i][j] == num and (i,j) != pos:
+                    if sudoku[i][j] == num and (i,j) != pos:
                         return False
             return True
 
-        def inner_print_board(bo):
+        def inner_print_board(sudoku):
 
-            for i in range(len(bo)):
+            for i in range(9):
                 if i % 3 == 0 and i != 0:
                     print("- - - - - - - - - - - - - ")
-                for j in range(len(bo[0])):
+                for j in range(9):
                     if j % 3 == 0 and j != 0:
                         print(" | ", end="")
                     if j == 8:
-                        print(bo[i][j])
+                        print(sudoku[i][j])
                     else:
-                        print(str(bo[i][j]) + " ", end="")
+                        print(str(sudoku[i][j]) + " ", end="")
 
-        def inner_find_empty(bo):
+        def inner_find_empty(sudoku):
 
-            for i in range(len(bo)):
-                for j in range(len(bo[0])):
-                    if bo[i][j] == 0:
+            for i in range(9):
+                for j in range(9):
+                    if sudoku[i][j] == 0:
                         return (i, j)  # row, col
             return None
 
